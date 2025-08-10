@@ -61,4 +61,55 @@ class StockAnalysis:
         
         return outliers
     
+    def decompose_time_series(self, period=30):
+        """Decomposes time series into trend, seasonality, and residuals."""
+        decomposition = seasonal_decompose(self.data['Close'], model='additive', period=period)
+        
+        plt.figure(figsize=(12, 8))
+        plt.subplot(3, 1, 1)
+        plt.plot(decomposition.trend, label='Trend', color='blue')
+        plt.legend()
+        
+        plt.subplot(3, 1, 2)
+        plt.plot(decomposition.seasonal, label='Seasonality', color='green')
+        plt.legend()
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(decomposition.resid, label='Residuals', color='red')
+        plt.legend()
+        
+        plt.tight_layout()
+        plt.show()
     
+    def rolling_volatility_analysis(self, window=30):
+        """Analyzes volatility using rolling means and standard deviations."""
+        self.data['Rolling Mean'] = self.data['Close'].rolling(window=window).mean()
+        self.data['Rolling Std'] = self.data['Close'].rolling(window=window).std()
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(self.data['Close'], label='Close Price', alpha=0.5)
+        plt.plot(self.data['Rolling Mean'], label=f'{window}-Day Rolling Mean', color='blue')
+        plt.fill_between(self.data.index, 
+                         self.data['Rolling Mean'] - self.data['Rolling Std'], 
+                         self.data['Rolling Mean'] + self.data['Rolling Std'], 
+                         color='gray', alpha=0.3, label='Volatility (Rolling Std)')
+        
+        plt.xlabel('Time')
+        plt.ylabel('Price')
+        plt.title(f'{window}-Day Rolling Mean & Volatility')
+        plt.legend()
+        plt.show()
+    
+    def risk_analysis(self, confidence_level=0.95):
+        """Calculates Value at Risk (VaR) and Sharpe Ratio."""
+        mean_return = self.data['Daily Returns'].mean()
+        std_return = self.data['Daily Returns'].std()
+        
+        # Value at Risk (VaR) - Parametric Method
+        VaR = mean_return - std_return * 1.65  # 95% confidence level
+        
+        # Sharpe Ratio (Assuming risk-free rate = 0)
+        sharpe_ratio = mean_return / std_return
+        
+        print(f"VaR (95% confidence): {VaR:.4f}")
+        print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
