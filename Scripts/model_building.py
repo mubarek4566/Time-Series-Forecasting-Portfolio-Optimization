@@ -124,3 +124,76 @@ class SARIMA:
     def predict_future(self, steps=60):
         """Predict future values for a given number of steps."""
         return self.forecast(steps=steps)
+    
+class LSTMForecast:
+    # 'batch_size': 32, 'dropout_rate': 0.2, 'epochs': 20, 'lstm_units': 100
+    def __init__(self, data, lstm_units=100):
+        self.data = data
+        self.lstm_units = lstm_units
+        self.model = None
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
+
+        # Fit the scaler once and store scaled data
+        self.scaled_data = self.scaler.fit_transform(self.data.values.reshape(-1, 1))
+    
+    def train_model(self):
+        X_train, y_train = [], []
+
+        # Prepare training sequences
+        for i in range(60, len(self.scaled_data)):
+            X_train.append(self.scaled_data[i-60:i, 0])
+            y_train.append(self.scaled_data[i, 0])
+
+        X_train, y_train = np.array(X_train), np.array(y_train)
+        X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+
+        # Define LSTM model
+        self.model = Sequential([
+            Input(shape=(X_train.shape[1], 1)),  # Explicit Input layer
+            LSTM(units=self.lstm_units, return_sequences=True),
+            Dropout(0.2),
+            LSTM(units=self.lstm_units, return_sequences=True),
+            Dropout(0.2),
+            LSTM(units=self.lstm_units),
+            Dropout(0.2),
+            Dense(units=1)
+        ])
+
+        self.model.compile(optimizer='adam', loss='mean_squared_error')
+        self.model.fit(X_train, y_train, epochs=20, batch_size=32)
+        self.model.save('lstm_model.h5')
+
+    def forecast(self, steps=30):
+        """ Generate future predictions based on the last 60 time steps. """
+        self.model = load_model('lstm_model.h5')
+        X_input = self.scaled_data[-60:].reshape(1, 60, 1)  # Use stored scaled data
+        predictions = []
+
+        for _ in range(steps):
+            pred = self.model.predict(X_input, verbose=0)
+            predictions.append(pred[0, 0])  # Extract scalar value
+            X_input = np.append(X_input[:, 1:, :], pred.reshape(1, 1, 1), axis=1)
+
+        # Convert predictions back to original scale
+        predictions = np.array(predictions).reshape(-1, 1)
+        return self.scaler.inverse_transform(predictions).flatten()
+
+    def evaluate(self, test_data):
+        """ Evaluate model performance using MAE, RMSE, MAPE, and R^2 score. """
+        predictions = self.forecast(steps=len(test_data))
+
+        # Ensure predictions and test_data are 1D arrays
+        test_data = test_data.values.flatten()
+        predictions = predictions.flatten()
+
+        # Compute error metrics
+        mae = mean_absolute_error(test_data, predictions)
+        rmse = np.sqrt(mean_squared_error(test_data, predictions))
+        mape = np.mean(np.abs((test_data - predictions) / test_data)) * 100
+        r2 = r2_score(test_data, predictions)
+
+        return {'MAE': mae, 'RMSE': rmse, 'MAPE': mape, "R Squared": r2}
+
+    def predict_future(self, steps=60):
+        """ Predict future values for given steps. """
+        return self.forecast(steps=steps)
