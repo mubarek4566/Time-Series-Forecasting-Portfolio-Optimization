@@ -41,8 +41,7 @@ class ARIMAmodel:
         return {'MAE': mae, 'RMSE': rmse, 'MAPE': mape, "R Squered:": r2}
     def predict_future(self, steps=60):
         return self.forecast(steps=steps)
-
-
+      
 class SARIMA:
     def __init__(self, data, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12)):
         # Ensure the index is a DateTimeIndex with frequency
@@ -60,7 +59,7 @@ class SARIMA:
         # Normalize the data
         self.data_scaled = self.scaler.fit_transform(self.data.values.reshape(-1, 1))
         # self.data_scaled = self.data_scaled.dropna()
-        
+
     def _infer_frequency(self):
         """Infer the frequency of the time series."""
         inferred_freq = pd.infer_freq(self.data.index)
