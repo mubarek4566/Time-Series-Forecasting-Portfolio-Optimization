@@ -109,7 +109,7 @@ class LSTM_search:
         train_data, test_data = self.data[:train_size], self.data[train_size:]
 
         # Initialize the forecaster with training data and train the model
-        forecaster_train = LSTMForecaster(train_data)
+        forecaster_train = LSTM_search(train_data)
         forecaster_train.train_model(batch_size=batch_size, dropout_rate=dropout_rate, epochs=epochs, lstm_units=lstm_units)
 
         # Prepare test data and make predictions
